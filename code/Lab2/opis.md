@@ -1,3 +1,3 @@
-##Zadanie 2.##
-*Dodać opis 
+# Zadanie 2.
+* Dodać opis
 * **Modyfikacja**:  
