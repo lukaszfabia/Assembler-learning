@@ -1,3 +1,3 @@
 # Zadanie 2.
-* Dodać opis
+* Zaimplementuj program, który obliczy wartość danego wyrażenia, będzie działał w pętli dopóki user nie poda na wejściu 0(nie). User podaje 3 liczby oraz nr. wyrażenia jakim ma być liczone. 
 * **Modyfikacja**:  
