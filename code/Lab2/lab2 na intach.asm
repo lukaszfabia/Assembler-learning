@@ -59,6 +59,7 @@ calculate_1:
     # a = (c - b) / d
     # tu moze byc problem (dzielenie) wynik ktory zostanie zapisany do a to bedzie podloga z tego wyniku prawdziwego
     # + d nie moze byc zerem bo nie mozna dzielnic
+    # moze wystapic overflow przy mnozeniu jesli wyniku nie bedzie dalo sie zakodwać na 32 bitach ?
     lw $t0, c # ladujemy do rejstru wart c
     lw $t1, b # ladujemy do rejstru wart b
     sub $t0, $t0, $t1 # odjemujemy i przypisujemy wynik do rejestru $t0
@@ -91,7 +92,7 @@ calculate_3:
     j print_result # skok do labela print_result zeby wypisal wynik
 
 print_result:
-    # wypisanie wiadomo�ci "wynik: "
+    # wypisanie wiadomości "wynik: "
     li $v0, 4
     la $a0, msg_result
     syscall
