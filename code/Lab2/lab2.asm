@@ -1,5 +1,5 @@
 .data
-is_end:      .word 0
+#is_end:      .word 0
 a:           .float 0.0
 b:           .float 0.0
 c:           .float 0.0
@@ -10,17 +10,13 @@ which:       .word 0
 msg_b:       .asciiz "Podaj b: "
 msg_c:       .asciiz "Podaj c: "
 msg_d:       .asciiz "Podaj d: "
-msg_result:  .asciiz "Wynik: "
-msg_continue: .asciiz "Czy kontynuowac? (0 - nie, 1 - tak): "
+msg_result:  .asciiz "Wynik a="
+msg_continue: .asciiz "\nCzy kontynuowac? (0 - nie, 1 - tak): "
 msg_expression: .asciiz "Z ktorego wyrazenia policzyc: "
-newline:     .asciiz "\n"
+msg_wrong_number: .asciiz "Nie poprawna komenda!"
+div_exc: .asciiz "div/0!"
 
 .text
-main:
-    # ustawiamy is_end na false 
-    li $t0, 0 # ladujemy do rejestru $t0 0 
-    sw $t0, is_end # i robimy przypisanie do zmiennej is_end
-
 loop:
     # wypisanie wiadomosci i wczytanie zmiennej b
     li $v0, 4 # rezerwujemy pamiec 
@@ -66,6 +62,8 @@ calculate_1:
     l.s $f1, b # ladujemy do rejstru wart b
     sub.s $f2, $f0, $f1 # odjemujemy i przypisujemy wynik do rejestru $f2
     l.s $f3, d # ladujemy do rejstru wart d
+    c.eq.s $f3, $f7 # sprawdzamy czy warunek jest prawdziwy 
+    bc1t div_exception # jesli warunek jest true to robimy skok to wyjatku
     div.s $f2, $f2, $f3 # dzielimy i nadpisujemy do rejestru f2
     s.s $f2, a # zapisujemy do zmiennej a wart. z rejestru f2
     j print_result # wykonujemy skok do etykiety wypisujacej wynik
@@ -86,14 +84,14 @@ calculate_3:
     l.s $f1, c
     mul.s $f2, $f0, $f1 # mnozymy rejestry f0, f1 do zapisujemy do rejestru f2
     l.s $f3, const # zaladowanie stalej do rejestru f3 coprocesora1 
-    l.s $f4, d 
+    l.s $f4, d
     mul.s $f3, $f3, $f4 # mnozymy to co jest w rejestrze f3 i f4 i nadpisujemy rejstr f3
     sub.s $f2, $f2, $f3 # odejmujemy i robimy podobnie to poprzedniego 
     s.s $f2, a # zapisujemy wynik do zmiennej a 
     j print_result # skok do labela print_result zeby wypisal wynik
 
 print_result:
-    # wypisanie wiadomoúci "wynik: "
+    # wypisanie wiadomo≈õci "wynik: "
     li $v0, 4
     la $a0, msg_result
     syscall
@@ -102,11 +100,8 @@ print_result:
     li $v0, 2 # w rejestrze v0 ustawiamy wartosc 2, przeznaczona dla liczby typu float, niezbedne przy pokazaniu wyniku 
     l.s $f12, a # ladowanie do rejstru coprocesora1 f12 zmiennej a 
     syscall # wywolanie rejstru v0, a nim mamy info ze chcemy wyswitelic floata 
-
-    # przejscie do nowej linii
-    li $v0, 4
-    la $a0, newline
-    syscall
+  
+continue: 
 
     # wpisanie wiadomosci "Czy kontynuowac? (0 - nie, 1 - tak): "
     li $v0, 4 # ustawiamy sobie rejestr v0 na 4 bitow - przechowanie stringa 
@@ -121,10 +116,25 @@ print_result:
     # sprawdzenie wartosci continuing
     lw $t0, continuing # ladujemy do t0 zmienna ze stanem 
     beq $t0, 0, end_loop # jesli w t0 jest 0 to skaczemy do etykiety ktora zakonczy loopa 
-
-    j loop # skaczemy do loopa 
+    beq $t0, 1, loop
+    
+    j wrong_number # skaczemy do loopa 
 
 end_loop:
     # koniec programu 
     li $v0, 10
     syscall
+    
+div_exception:
+    # wyjatek przy dzieleniu przez 0
+    li $v0, 4
+    la $a0, div_exc
+    syscall
+    j continue
+    
+wrong_number:
+    # wyswietlnie komunikatu gdy user podal cos innego niz 1 albo 0
+    li $v0, 4
+    la $a0, msg_wrong_number
+    syscall 
+    j continue
