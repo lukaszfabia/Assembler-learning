@@ -9,10 +9,10 @@ msg_b:       .asciiz "Podaj b: "
 msg_c:       .asciiz "Podaj c: "
 msg_d:       .asciiz "Podaj d: "
 msg_result:  .asciiz "Wynik a="
-msg_continue: .asciiz "Czy kontynuowac? (0 - nie, 1 - tak): "
+msg_continue: .asciiz "\nCzy kontynuowac? (0 - nie, 1 - tak): "
 msg_expression: .asciiz "Z ktorego wyrazenia policzyc: "
-newline:     .asciiz "\n"
 div_exc: .asciiz "div/0!\n"
+msg_wrong_number: .asciiz  "Nie poprawna komenda!\n"
 
 .text    
 loop:
@@ -41,10 +41,11 @@ loop:
     syscall 
     sw $v0, d
 
-    # Wczytanie wartosci which
+    # Pokaz msg expression
     li $v0, 4
     la $a0, msg_expression
     syscall 
+    # wczytaj do zmiennej which inta 
     li $v0, 5
     syscall
     sw $v0, which
@@ -102,11 +103,6 @@ print_result:
     lw $a0, a # ladowanie do adresu zmiennej a 
     syscall # wywolanie rejstru v0, a nim mamy info ze chcemy wyswitelic inta 
 
-    # przejscie do nowej linii
-    li $v0, 4
-    la $a0, newline
-    syscall
-
 continue:
     # wpisanie wiadomosci "Czy kontynuowac? (0 - nie, 1 - tak): "
     li $v0, 4 # ustawiamy sobie rejestr v0 na 4 bitow - przechowanie stringa 
@@ -121,8 +117,9 @@ continue:
     # sprawdzenie wartosci continuing
     lw $t0, continuing # ladujemy do t0 zmienna ze stanem 
     beq $t0, 0, end_loop # jesli w t0 jest 0 to skaczemy do etykiety ktora zakonczy loopa 
-
-    j loop # skaczemy do loopa 
+    beq $t0, 1, loop
+    
+    j wrong_number # skaczemy do loopa 
 
 end_loop:
     # koniec programu 
@@ -130,8 +127,15 @@ end_loop:
     syscall
     
 div_exception:
+    # wyjatek przy dzieleniu przez 0
     li $v0, 4
     la $a0, div_exc
     syscall
     j continue
     
+wrong_number:
+    # wyswietlnie komunikatu gdy user podal cos innego niz 1 albo 0
+    li $v0, 4
+    la $a0, msg_wrong_number
+    syscall 
+    j continue
