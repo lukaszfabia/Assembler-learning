@@ -1,9 +1,3 @@
-# registers
-# $t0 - type of operation
-# $t1 - key
-# $t2 - input string
-
-
 .data
 	key: .space 9
 	key_values: .space 9
@@ -11,7 +5,7 @@
 	fixed_input: .space 51
 	ciphered_output: .space 51
 	offset_part: .space 9
-	msg_which: .asciiz "Ktora operacje wykonac: (S) szyfrowanie, (D) deszyfrowanie: "
+	msg_which: .asciiz "\nKtora operacje wykonac: (S) szyfrowanie, (D) deszyfrowanie: "
 	msg_d: .asciiz "\nPodaj dlugosc klucza (max 8 cyfr): "
 	msg_key: .asciiz "Podaj klucz przeksztalcenia zawierajacy cyfry z przedzialu od 1 do 8: "
 	msg_text_for_s: .asciiz "Podaj tekst jawny: "
@@ -25,10 +19,6 @@
 
 	main:
 	
-	# registers
-	# t0 - "D"
-	# t1 - "S"
-	# s0 - input
 	input_type:
 		# pokazanie wiadomosci z wyborem
 		li $v0, 4
@@ -154,7 +144,6 @@
 		move $s3, $zero
 		
 	cipher_main_loop:
-		#wyzerowanie s4 
 		move $s4, $zero
 		# odczytujemy s3 zapisane pod koniec petli w celu przesuniecia sie o d znakow w ciagu
 		addu $s5, $s3, $s7
@@ -164,13 +153,14 @@
 		lb $t4, fixed_input($s5)
 		# gdy jest koniec tego strigna 
 		beqz $t4, copy_rest
+		
 		inside_loop:
 			# gdy przesunelismy sie w tablicy o d miejsc 
 			beq $s4, $s7, c_next
 			# ladujemy znak z ind s2 ze str 
 			lb $t0, fixed_input($s2)
 			# jesli jest 0 to wychodzimy z 2 petli 
-			beqz $t0, output_cipher
+			beqz $t0, choose_output
 			# ladujemy sobie pierwsza wartosci z nowego klucza
 			lb $t1, key_values($s4)
 			# korekta ind 
@@ -194,7 +184,7 @@
 			# zaladowanie stringa na s2 ind 
 			lb $t0, fixed_input($s2)
 			# gdy jest koniec znakow
-			beqz $t0, output_cipher
+			beqz $t0, choose_output
 			# zapisanie znaku w nowej tablicy 
 			sb $t0, ciphered_output($s2)
 			# przesuniecie sei w tablicy o 1 bajt
