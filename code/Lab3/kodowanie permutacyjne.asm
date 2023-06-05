@@ -202,8 +202,8 @@
 			j copy_rest
 	
 	choose_output:
-		beq $s6, 'S', output_cipher
-		beq $s6, 'D', output_decipher
+		beq $s6, 'S', ans_for_s
+		beq $s6, 'D', ans_for_d
 	
 	ans_for_s:
 		li $v0, 4
