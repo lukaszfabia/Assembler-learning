@@ -38,7 +38,7 @@
 		li $v0, 12
 		syscall
 		
-		move $s6, $v0 # zapamietanie wartosci w rejestrze stałym 
+		move $s6, $v0 # zapamietanie wartosci w rejestrze staĹ‚ym 
 		
 		beq $s6, 'D', input_key
 		beq $s6, 'S', input_key
@@ -149,7 +149,7 @@
 	
 	
 	end_new_key:
-		# wyzerowanie stalych rejestr�w 
+		# wyzerowanie stalych rejestrów 
 		move $s2, $zero
 		move $s3, $zero
 		
@@ -205,27 +205,27 @@
 		beq $s6, 'S', output_cipher
 		beq $s6, 'D', output_decipher
 	
-	output_cipher:
+	ans_for_s:
 		li $v0, 4
 		la $a0, msg_cipher
 		syscall
-		j output
+		j final_ans
 				
-	output_decipher:
+	ans_for_d:
 		li $v0, 4
 		la $a0, msg_decipher
 		syscall
-		j output
+		j final_ans
 		
-	output:
+	final_ans:
 		li $v0, 4
 		la $a0, ciphered_output
 		syscall
 		
-		j exit		
+		j finish		
 
 	
-	exit:
+	finish:
 		li $v0, 10
 		syscall
 	
