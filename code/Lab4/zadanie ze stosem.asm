@@ -5,17 +5,12 @@ result: .space 20     # Bufor dla wyniku
 prompt1: .asciiz "Podaj pierwszy tekst: "
 prompt2: .asciiz "Podaj drugi tekst:    "
 count_msg: .asciiz "\nLiczba jednakowych znakow: "
-memory_msg: .asciiz "\nZaalokowana pamiec na stosie:" 
+memory_msg: .asciiz "\nZaalokowana pamiec na stosie: " 
 info: .asciiz "Zawartosc stosu - wypisana wg. lifo: "
 prompt3: .asciiz "\nPodaj najpierw dluzszy tekst potem krotszy\n"
 
 .text
-main:
-	# prompt3 
-	li $v0, 4
-	la $a0, prompt3
-	syscall
-	
+main:	
 	# prompt z pierwszym tekstem
 	li $v0, 4
 	la $a0, prompt1
@@ -43,29 +38,31 @@ main:
 	move $s0, $zero
 	move $s7, $zero # rejestr do przechowania pamieci zaalokowanej na stosie licze w ten sposob ze sumuje rzeczy polozone na stosie
 	# ale aktualizuje jak zdejmuje no bo zawsze zostanie 1bajt na stosie wiec to nie mialoby sensu chyba 
-length_of_first:
-	# wyznaczenie dlugosci pierwszego ciagu
-	lbu $t0, buffer1($s1)
-	beqz $t0, length_of_sec
-	addiu $s1, $s1, 1
-	j length_of_first
+	
+	# obliczenie dlugosci z funkcji dla buffer1/2
+	la $a0, buffer1
+	jal len
+	move $s1, $v0
 	
 	
-length_of_sec:
-	# wyznaczenie dlugosci drugiego ciagu
-	lbu $t0, buffer2($s0)
-	beqz $t0, continue
-	addiu $s0, $s0, 1
-	j length_of_sec
+	la $a0, buffer2
+	jal len
+	move $s0, $v0
+	
+	
+checkin:
+	# buffer2>buffer1
+	bgt $s0, $s1, prepare_var 
+	j continue
+	
+prepare_var: 
+	# zamiana tablic
+	la $a0, buffer1
+	la $a1, buffer2
+	jal swap
 	
 
 continue:
-	# podaj pierwszy ciag dluzszy niz drugi
-	blt $s1, $s0, main
-	# korekta na indeksy 
-	subiu $s1, $s1, 1 # dla pierwszego 
-	subiu $s0, $s0, 1 # dla drugiego 
-	
 	addiu $s2, $zero, '*' # rozne 
 	addiu $s3, $zero, '-' # te same 
 	
@@ -75,16 +72,27 @@ continue:
 	sb $s4, 0($sp)
 	addiu $sp, $sp, -1
 	addiu $s7, $s7, 1
+	
+	# czyszczenie s4
 	move $s4, $zero
 	
+	# upadate dla dlugosci ciagow 
+	la $a0, buffer1
+	jal len
+	move $s1, $v0
+	
+	la $a0, buffer2
+	jal len
+	move $s0, $v0
+	
+	li $s6, -1
+
 	
 compression:
 	lbu $t1, buffer1($s1)
 	lbu $t2, buffer2($s0)
-
-	# powinno brac ten ktory sie szybciej konczy 
-	#beqz $t1, copy # nie dzila 
-	beqz $t2, copy # dziala gdy gdy buffer1>buffer2
+ 
+	beqz $t2, copy # teraz mamy pewnosc ze buffer2<buffer1
 	
 	# dekrementacja wskaznikow do tablic
 	subiu $s0, $s0, 1
@@ -107,11 +115,10 @@ same:
 	# zabranie jednego bajta 
 	addiu $sp, $sp, -1
 	addiu $s7, $s7, 1
+	addi $s6, $s6, 1 # counter ++
 	j compression
 	
 	
-	move $s0, $zero
-	move $s1, $zero
 copy:
 	# kopiowanie zawartosci stosu do resulta
 	lbu $t0, 0($sp)
@@ -122,43 +129,24 @@ copy:
 	j copy
 		
 end: 
+	# dolaczenie 0 na koniec tablicy czyli tej stopki stosu
+	la $a0, result
+	move $t0, $v0
+	addiu $t1, $zero, '0'
+	addiu $sp, $sp, 1
+	sb $t1, result($t0)
+	
 	# pokazanie wiadomosci z zawartoscia stosu
 	li $v0, 4
 	la $a0, info
 	syscall
 	
-	move $s0, $zero
-	
-len_res:
-	# wyznaczenie dlugosci ciagu znakowego
-	lbu $t0, result($s0)
-	beqz $t0, next
-	addiu $s0, $s0, 1
-	j len_res
-
-next:
-	subiu $s0, $s0, 2 # <= dlugosc tablicy -2 
-	move $s1, $zero # zmienna do przechowania ilosci "-"
-	move $s3, $zero # wskaźnik do poruszania sie w tablicy
-	addiu $s4, $zero, '-'
-result_loop:
-	bgt $s3, $s0, print_info # i<= len(res)-2
-	lbu $t0, result($s3)
-	beq $t0, $s4, counter # jesli element w tablicy jest '-' to inkrementujemy zmienna od takich samych
-	print:
-	# pokazanie zawartosci stosu wg. lifo
-	li $v0, 11
-	move $a0, $t0
+	# sama zawartosc stosu
+	li $v0, 4
+	la $a0, result
 	syscall
 	
-	addiu $s3, $s3, 1 # przesuwamy sie po tablicy
-	j result_loop
 	
-counter: 
-	addiu $s1, $s1, 1 
-	j print
-	
-print_info:	
 	# pokazanie wiadmosci z iloscia takich samych znakow 
 	li $v0, 4
 	la $a0, count_msg
@@ -166,7 +154,7 @@ print_info:
 	
 	# pokazanie wyniku countera
 	li $v0, 1
-	move $a0, $s1
+	move $a0, $s6
 	syscall
 	
 	# pokozanie wiad z pamiecia 
@@ -183,3 +171,36 @@ print_info:
 	# koniec programu 
 	li $v0, 10
 	syscall
+	
+	
+#functions
+len:
+	move $v0, $zero
+	loop_len:
+		lb $t0, ($a0)  # Zmiana na lb zamiast lbu
+        	beqz $t0, end_fun_len
+        	addiu $a0, $a0, 1
+        	addiu $v0, $v0, 1
+        j loop_len
+
+end_fun_len:
+	sub $v0, $v0, 1
+	jr $ra
+    
+swap:
+	swap_loop:
+		lb $t0, ($a0)
+		lb $t1, ($a1)
+		
+		beqz $t1, end_fun_swap
+		
+		sb $t0, ($a1)
+		sb $t1, ($a0)
+		
+		addi $a0, $a0, 1
+		addi $a1, $a1, 1
+		j swap_loop
+		
+end_fun_swap:
+	jr $ra
+	
