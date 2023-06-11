@@ -7,7 +7,6 @@ prompt2: .asciiz "Podaj drugi tekst:    "
 count_msg: .asciiz "\nLiczba jednakowych znakow: "
 memory_msg: .asciiz "\nZaalokowana pamiec na stosie: " 
 info: .asciiz "Zawartosc stosu - wypisana wg. lifo: "
-prompt3: .asciiz "\nPodaj najpierw dluzszy tekst potem krotszy\n"
 
 .text
 main:	
@@ -122,8 +121,10 @@ same:
 copy:
 	# kopiowanie zawartosci stosu do resulta
 	lbu $t0, 0($sp)
-	addiu $sp, $sp, 1
 	beq $t0, '0', end
+	# to nam da tyle ze jesli dojdziemy na koniec stosu to zostawimy 0 na koncu i bedziemy
+	# mogli doloczyc je na koniec bufora z resultem 
+	addiu $sp, $sp, 1
 	sb $t0, result($s0)
 	addiu $s0, $s0, 1
 	j copy
@@ -132,7 +133,7 @@ end:
 	# dolaczenie 0 na koniec tablicy czyli tej stopki stosu
 	la $a0, result
 	move $t0, $v0
-	addiu $t1, $zero, '0'
+	lbu $t1, 0($sp)
 	addiu $sp, $sp, 1
 	sb $t1, result($t0)
 	
