@@ -1,6 +1,5 @@
 .data
-prompt1: .asciiz "Podaj liczbe i sprawdz, czy jest doskonala: "
-liczba: .word 0
+prompt1: .asciiz "Podaj koniec przedzialu: "
 .text
 main:
     li $v0, 4
@@ -9,23 +8,24 @@ main:
     
     li $v0, 5
     syscall
-    sw $v0, liczba
+    move $s2, $v0
 
+    addi $s1, $zero, 1 # [1, k] i = 1
+while:
+    bgt $s1, $s2, end
+    # wywolanie funkcji i wstawienie do v0 sumy dzielnikow 
     jal is_perfect
-    lw $t0, liczba
-    beq $v0, $t0, print_pos
+    #v0 - suma dzielnikow 
+    beq $v0, $s1, print_pos
+    addi $s1, $s1, 1 # i++
+    j while
 
-    li $v0, 11
-    la $a0, 'n'
-    syscall
-
-    j end
 
 is_perfect:
     li $t0, 0  # sum=0
     li $t1, 1  # i=1
 loop:
-    lw $s0, liczba
+    move $s0, $s1
     beq $t1, $s0, set_var
     div $s0, $t1  # $s0 / $t1
     mfhi $t3  # $t3 = $s0 % $t1
@@ -39,13 +39,20 @@ set_var:
 
 add_to_sum:
     add $t0, $t0, $t1 # sum+=i
-    addi $t1, $t1, 1
+    addi $t1, $t1, 1 #i++
     j loop
 
 print_pos:
-    li $v0, 11
-    la $a0, 't'
+    li $v0, 1
+    move $a0, $s1
     syscall
+
+    li $v0, 11
+    la $a0, ' '
+    syscall
+    
+    addi $s1, $s1, 1
+    j while
 
 end:
     li $v0, 10
