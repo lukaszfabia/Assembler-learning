@@ -6,5 +6,6 @@
 itd.
 ```
 Napisz program w assembly, który sprawdzi czy liczba jest doskonała. 
+
 **Modyfikacja**: Dodaj funkcje, która wyświetli te liczby z przedziału `[1, k]`.
   
