@@ -21,7 +21,8 @@ main:
     #wczytanie wartosci 
     li $v0, 5
     syscall
-    # jesli przekroczy granice to skok do poczaktu bo nie starczy miejsca na stacku 
+    # przy ~500 000<granicach rzuca wyjtkiem ze jest out of range
+    # druga sprawa jest taka ze dalej ~500 000 jako wart. granicy wynik jest ten sam 3.1415906 jakby sie wzielo double to moze by moglo policzyc dokladniej 
     li $t0, 500000
     bgt $v0, $t0, main
     # wywolanie funkcji
