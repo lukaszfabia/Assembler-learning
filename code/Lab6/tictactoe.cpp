@@ -96,23 +96,24 @@ void computer_move() {
     else {
         computer_mark='x';
     }
-    //blokowanie gracza
-    for (int i = 0; i < 9; i++) {
-        if (grid[i] == '0' + i + 1) {
-            grid[i] = choiced;
-            if (check_win()) {
-                grid[i] = computer_mark;
-                return;
-            }
-            grid[i] = '0' + i + 1;
-        }
-    }
 
     // sprawdzenie czy mozna wygrrac 
     for (int i = 0; i < 9; i++) {
         if (grid[i] == '0' + i + 1) {
             grid[i] = computer_mark;
             if (check_win()) {
+                return;
+            }
+            grid[i] = '0' + i + 1;
+        }
+    }
+    
+    //blokowanie gracza
+    for (int i = 0; i < 9; i++) {
+        if (grid[i] == '0' + i + 1) {
+            grid[i] = choiced;
+            if (check_win()) {
+                grid[i] = computer_mark;
                 return;
             }
             grid[i] = '0' + i + 1;
