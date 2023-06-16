@@ -24,9 +24,8 @@ draw_msg: .asciiz "Remis!"
 end_msg: .asciiz "Koniec gry!"
 round_msg: .asciiz "Runda: "
 choice_msg: .asciiz "Wybierz swoj znak 'x' albo 'o': "
-divider: .asciiz "\n-----------------------------------\n\n"
+divider: .asciiz "\n-----------------------------------\n"
 computer_msg: .asciiz "Komputer wybral pozycje: "
-start_grid: .asciiz "1 | 2 | 3\n----------\n4 | 5 | 6\n----------\n7 | 8 | 9\n"
 
 
 # zarezerwowane rejestry: s0, s1
@@ -68,6 +67,10 @@ main:
 
 
 exit:
+    li $v0, 4
+    la $a0, end_msg
+    syscall
+    
 	li $v0, 10
 	syscall
 # jedna runda gry    
@@ -83,6 +86,12 @@ round:
     jal print_grid # wypisanie planszy
     jal get_player_move # pobranie ruchu gracza
     jal print_grid # wypisanie planszy
+
+    # wypisanie komunikatu o ruchu komputera
+    li $v0, 4
+    la $a0, computer_msg
+    syscall
+
     j get_computer_move # pobranie ruchu komputera
     after_computer_move:
     j round
@@ -149,10 +158,14 @@ get_computer_move:
     lb $t1, grid($t0)
     beq $t1, '5', take_middle
     j try_to_take_corner
+
     take_middle:
         lb $t1, computer_sign
         sb $t1, grid($t0)
         j after_computer_move
+
+
+    # zajecie rogu
 
     try_to_take_corner:
         addi $t0, $zero, 0 # iterator dla corners_indexes
