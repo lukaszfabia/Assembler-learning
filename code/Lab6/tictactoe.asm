@@ -8,7 +8,8 @@ results_for_computer: .word 0
 position: .word 0
 choiced: .byte 1
 xoro: .byte 'x', 'o'  # Przechowuje znaki 'x' i 'o'
-computer_mark .byte 1 # Przechowuje znak komputera
+computer_mark: .byte 1 # Przechowuje znak komputera
+corners: .word 0, 2, 6, 8 # Przechowuje indeksy rogów planszy
 
 # prompty dla gracza
 computer: .asciiz "Komputer"
@@ -108,10 +109,29 @@ game:
             la $a0, divider
             syscall
 
-            jal computer_move
+            j computer_move
+		after_computer_move:
             jal display_grid
             j while
 
+	# drukowanie linii oddzielajacej
+	li $v0, 4
+	la $a0, divider
+	syscall
+
+	# drukowanie tablicy
+	jal display_grid
+
+	# drukowanie wiadomosci o wygranej
+	# wywolanie funcji ktora zworoc nam znak ktory wygral
+
+
+	lb $t0, choiced
+
+
+	j after_game
+#Algorym ruchu komputera
+#-------------------------------------------
 
 computer_move:
     lb $t0, choiced # pobranie wyboru gracza
@@ -131,12 +151,117 @@ set_computer_mark_on_x:
 after_set:
     # sprawdzenie czy mozna wygrac dokladajac jeden znak
     li $t0, 0                  # $t0 - iterator i
-    la $t1, grid               # $t1 - adresa tablicy grid
-    li $t2, 1                  # $t2 - wartość do porównania z elementami tablicy grid
+    li $t2, 0                  # $t2 - wartość do porównania z elementami tablicy grid
 
     for_for_computer_move1:
-        
+		beq $t0, 9, for_for_computer_move1_end # Jeśli i >= 9, zakończ pętlę
+		lb $t3, grid($t0)            # $t3 - pierwszy znak
+		# wartosc do porownania 
+		addi $t2, $t0, 1 # i+1
+		addu $t2, $t2, '0' # '0'+1+i 
+		beq $t3, $t2, make_computer_move1 # jesli znak jest rowny wartosci do porownania to powrot do petli
+		addi $t0, $t0, 1 # i++
+		j for_for_computer_move1
 
+    make_computer_move1:
+		# jesli znak jest inny niz wartosc do porownania to ustawienie znaku komputera na wartosc do porownania
+		lb $t4, computer_mark
+		sb $t4, grid($t0) # grid[i]=computer_mark
+		jal check_win # sprawdzenie wygranej
+		beq $v0, 1, after_computer_move # jesli wygrana jest inna niz 0 to koniec rozgrywki
+		# grid[i]='0'+i+1
+		sb $t2, grid($t0)
+		addi $t0, $t0, 1 # i++
+		j for_for_computer_move1
+
+	for_for_computer_move1_end:
+
+		#blokowanie gracza
+		li $t0, 0                  # $t0 - iterator i
+		li $t2, 0                  # $t2 - wartość do porównania z elementami tablicy grid
+
+		for_for_computer_move2:
+			beq $t0, 9, for_for_computer_move2_end # Jeśli i >= 9, zakończ pętlę
+			lb $t3, grid($t0)            # grid[i]
+			# wartosc do porownania
+			addi $t2, $t0, $t2 # i+1
+			addu $t2, $t2, '0' # '0'+1+i
+			beq $t3, $t2, for_for_computer_move2 # jesli znak jest rowny wartosci do porownania to powrot do petli
+			addi $t0, $t0, 1 # i++
+			j for_for_computer_move2
+
+		for_for_computer_move2:
+			# jesli znak jest inny niz wartosc do porownania to ustawienie znaku komputera na wartosc do porownania
+			lb $t4, choiced  # ladowanie znaku gracza
+			sb $t4, grid($t0) # zapisujemy znak gracza w tablicy
+			jal check_win # sprawdzenie wygranej
+			beq $v0, 1, for_for_computer_move_save_computer_mark # jesli wygrana jest inna niz 0 to koniec rozgrywki
+			# grid[i]='0'+i+1
+			sb $t2, grid($t0)            # $t2 - drugi znak
+			addi $t0, $t0, 1 # i++
+			j for_for_computer_move2
+
+	for_for_computer_move_save_computer_mark:
+			# grid[i]=computer_mark
+			lb $t4, computer_mark
+			sb $t4, grid($t0)
+			j  after_computer_move # wychodzimy z petli
+
+	for_for_computer_move2_end:
+
+			#sprobujmy zajmujac 5 pole 
+			lb $t0, grid(4)
+			beq $t0, '5', computer_move_save_mid # jesli pole jest zajete to zapisz znak komputera w tym polu
+			j skip_saving_mid
+
+	computer_move_save_mid:
+			# grid[4]=computer_mark
+			lb $t4, computer_mark
+			sb $t4, grid(4)
+			j after_computer_move # wychodzimy z petli
+
+	skip_saving_mid:
+
+			# sprobujemy zajac rog planszy 
+			li $t0, 0                  # $t0 - iterator i
+			corner_loop:
+				beq $t0, 4, corner_loop_end # Jeśli i >= 9, zakończ pętlę
+				lw $t2, corners($t0)            # corners[i]
+				lb $t3, grid($t2)            # grid[i]
+				# wartosc do porownania
+				addi $t2, $t0, $t2 # i+1
+				addu $t2, $t2, '0' # '0'+1+i
+				beq $t3, $t2, corner_loop_save_mark # jesli znak jest rowny wartosci do porownania to powrot do petli
+				addi $t0, $t0, 1 # i++
+				j corner_loop
+
+			corner_loop_save_mark:
+				# jesli znak jest inny niz wartosc do porownania to ustawienie znaku komputera na wartosc do porownania
+				lb $t4, computer_mark
+				sb $t4, grid($t2) # grid[i]=computer_mark
+				jal check_win # sprawdzenie wygranej
+				beq $v0, 1, after_computer_move # jesli wygrana jest inna niz 0 to koniec rozgrywki
+				addi $t0, $t0, 1 # i++
+				j corner_loop
+
+	corner_loop_end:
+
+			# sprobujmy zajac wolne pole
+			li $t0, 0                  # $t0 - iterator i
+			free_loop:
+				beq $t0, 9, free_loop_end # Jeśli i >= 9, zakończ pętlę
+				lb $t3, grid($t0)            # grid[i]
+				# wartosc do porownania
+				addi $t2, $t0, $t2 # i+1
+				addu $t2, $t2, '0' # '0'+1+i
+				beq $t3, $t2, free_loop_save_mark # jesli znak jest rowny wartosci do porownania to powrot do petli
+				addi $t0, $t0, 1 # i++
+				j free_loop
+
+	free_loop_save_mark:
+			lb $t4, computer_mark
+			sb $t4, grid($t0) # grid[i]=computer_mark
+			j after_computer_move # wychodzimy z petli
 
 is_full:
     # sprawdzenie czy tablica jest pelna
@@ -327,6 +452,7 @@ check_win_condition15_2:
 
 increment_iterator:
     addiu $t0, $t0, 1         # i++
+	move $s2, $t3 # zmiana znaku
     j for_loop
 
 win_found:
@@ -417,7 +543,6 @@ end:
     # koniec programu
     li $v0, 10
     syscall
-
 
 
 
