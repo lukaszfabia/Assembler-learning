@@ -1,11 +1,11 @@
 .data 
 # tablice/ciagi znakow
 player_name: .space 30
-grid: .space 36
+grid: .space 9
 sign_set: .byte 'x', 'o'
 choiced_sign: .space 1
 computer_sign: .space 1
-corners_indexes: .word 0, 8, 24, 32
+corners_indexes: .word 0, 2, 6, 8
 
 # zmienne int
 amount_rounds: .word 0
@@ -18,14 +18,15 @@ computer: .asciiz "Komputer"
 prompt_player_name: .asciiz "Podaj swoje imie: "
 prompt_amount_rounds: .asciiz "Podaj ilosc rund: "
 prompt_position: .asciiz "\n\nPodaj pozycje: "
-win_msg: .asciiz "Wygrales!"
-lose_msg: .asciiz "Przegrales!"
-draw_msg: .asciiz "Remis!"
-end_msg: .asciiz "Koniec gry!"
-round_msg: .asciiz "Runda: "
+win_msg: .asciiz "\nWygrales!\n\n"
+lose_msg: .asciiz "\nPrzegrales!\n\n"
+draw_msg: .asciiz "\nRemis!\n\n"
+end_msg: .asciiz "\n\nKoniec gry!"
+round_msg: .asciiz "\n\nRunda: "
 choice_msg: .asciiz "Wybierz swoj znak 'x' albo 'o': "
-divider: .asciiz "\n-----------------------------------\n"
-computer_msg: .asciiz "Komputer wybral pozycje: "
+divider: .asciiz "\n\n-----------------------------------\n\n"
+small_divider: .asciiz "\n------\n"
+computer_msg: .asciiz "Komputer wybiera pozycje\n\n"
 
 
 # zarezerwowane rejestry: s0, s1
@@ -54,6 +55,15 @@ main:
 	addi $s0, $zero, 0 # ustawienie numeru rundy na 1
 	lw $s1, amount_rounds # wczytanie ilosci rund
 	game_loop:
+        li $v0, 4
+        la $a0, round_msg
+        syscall
+
+        li $v0, 1
+        addi $t0, $s0, 1
+        move $a0, $t0
+        syscall
+
 		# wypisanie podzialki
 		jal print_divider
 
@@ -75,17 +85,26 @@ exit:
 	syscall
 # jedna runda gry    
 round:
+    jal print_grid # wypisanie planszy
+    # done 
     jal check_win
     move $t0, $v0 # zapisanie wyniku do rejestru
     beq $t0, 1, end_of_round # jesli wynik jest rowny 1 to wygrana
-
+    # done 
     jal check_draw
     move $t0, $v0 # zapisanie wyniku do rejestru
     beq $t0, 1, end_of_round # jesli wynik jest rowny 1 to remis
 
-    jal print_grid # wypisanie planszy
     jal get_player_move # pobranie ruchu gracza
     jal print_grid # wypisanie planszy
+
+    jal check_win
+    move $t0, $v0 # zapisanie wyniku do rejestru
+    beq $t0, 1, end_of_round # jesli wynik jest rowny 1 to wygrana
+    # done 
+    jal check_draw
+    move $t0, $v0 # zapisanie wyniku do rejestru
+    beq $t0, 1, end_of_round # jesli wynik jest rowny 1 to remis
 
     # wypisanie komunikatu o ruchu komputera
     li $v0, 4
@@ -104,109 +123,123 @@ round:
         j after_round
 
 get_computer_move:
+
     #sprawdzenie czy komputer moze wygrac
     addi $t0, $zero, 0 # $t0 - iterator pętli
-    addi $t2, $zero, 0 # $t2 - iterator pętli
+    move $s4, $zero
+    move $s5, $zero
     can_i_win_loop:
-            beq $t0, 36, can_i_win_end # jesli i == 36 to jest remis
-            lb $t1, grid($t0) # wczytaj znak z tablicy
-            addiu $t2, $t0, 49
-            beq $t2, $t1, can_i_win1
-            # jesli to sie nie spelni to przejdz do nastepnego znaku
-            addi $t0, $t0, 4 # zwiększ i o 4
-            j can_i_win_loop
+            beq $s5, 9, can_i_win_end 
+                lb $t1, grid($s5) # wczytaj znak z tablicy
+                addi $t0, $s5, 0 # zapisanie iteracji do $t0
+                addi $s4, $t0, 1 # $t2 = i + 1
+                addu $s4, $s4, '0' # $t2 = '0' + i + 1
+                    bne $s4, $t1, can_i_win1
+
+                        lb $t1, computer_sign($zero)
+                        sb $t1, grid($s5)
+                        jal check_win
+
+                        beq $v0, 1, after_computer_move # to wygral komputer
+                            sb $s4, grid($s5) # grid[i] = '0' + i + 1;
+                            addi $s5, $s5, 1 # zwiększ i o 1
+                            j can_i_win_loop
             can_i_win1:
-                lb $t1, computer_sign
-                sb $t1, grid($t0)
-                jal check_win
-                beq $v0, 1, after_computer_move # to wygral komputer
-                sb $t2, grid($t0) # grid[i] = '0' + i + 1;
-                addi $t0, $t0, 4 # zwiększ i o 4
+                addi $s5, $s5, 1 # zwiększ i o 1
                 j can_i_win_loop
 
     can_i_win_end:
 
-    #blokowanie wygranej gracza
-    addi $t0, $zero, 0 # $t0 - iterator pętli
-    addi $t2, $zero, 0 # $t2 - iterator pętli
-    can_i_block:
-        beq $t0, 36, can_i_block_end # jesli i == 36 to jest remis
-        lb $t1, grid($t0) # wczytaj znak z tablicy
-        addiu $t2, $t0, 49
-        beq $t2, $t1, can_i_block1
-        # jesli to sie nie spelni to przejdz do nastepnego znaku
-        addi $t0, $t0, 4 # zwiększ i o 4
-        j can_i_block
-        can_i_block1:
-            lb $t1, choiced_sign
-            sb $t1, grid($t0)
-            jal check_win
-            beq $v0, 1, block # to wygral komputer
-            sb $t2, grid($t0) # grid[i] = '0' + i + 1;
-            addi $t0, $t0, 4 # zwiększ i o 4
-            j can_i_block
-        block:
-            lb $t1, computer_sign
-            sb $t1, grid($t0)
-            j after_computer_move
+    #blokowanie wygranej gracza - chyba dziala 
+    move $s4, $zero # $s4 - dla przechowania znaku z tablicy
+    move $s5, $zero # $s5 - dla przechowania znaku z tablicy
+    can_i_block: 
+        beq $s5, 9, can_i_block_end # jesli i == 36 to jest remis
+            lb $t1, grid($s5) # wczytaj znak z tablicy
+            addi $t3, $s5, 0 # skopiuj i do $t3
+            addi $s4, $t3, 1 # $s4 = i + 1
+            addu $s4, $s4, '0' # $s4 = '0' + i + 1
+                beq $s4, $t1, can_i_block1
+                    addi $s5, $s5, 1 # zwiększ i o 1
+                    j can_i_block
+                    can_i_block1:
+                        lb $t1, choiced_sign
+                        sb $t1, grid($s5)
+                        jal check_win
+                            beq $v0, 1, block # sprawdzenie czy gracz moze wygrac
+                                sb $s4, grid($s5) # grid[i] = '0' + i + 1;
+                                addi $s5, $s5, 1 # zwiększ i o 1
+                                j can_i_block
+                            block:
+                                lb $t2, computer_sign # Wczytaj wartość choiced do $t1
+                                sb $t2, grid($s5)
+                                j after_computer_move
 
     can_i_block_end:
-    
-    # zajecie srodka
+    move $s5, $zero # $s5 - dla przechowania znaku z tablicy
+    ########################################################   
+    # zajecie srodka - dziala bardzo dobrze !!!
 
-    li $t0, 16
+    li $t0, 4
     lb $t1, grid($t0)
     beq $t1, '5', take_middle
     j try_to_take_corner
 
     take_middle:
-        lb $t1, computer_sign
+        lb $t1, computer_sign($zero)
         sb $t1, grid($t0)
         j after_computer_move
 
 
-    # zajecie rogu
 
+    #####################################################
+    # zajecie rogu - dziala bardzo dobrze !!!
     try_to_take_corner:
+        addi $t3, $zero, 0 # $t0 - iterator pętli
         addi $t0, $zero, 0 # iterator dla corners_indexes
+        move $s4, $zero
         take_corner_loop:
-            beq $t0, 16, take_corner_end # jesli i == 4 to jest remis
+            beq $t0, 16, take_corner_end 
             lw $t1, corners_indexes($t0) # wczytaj znak z tablicy
             lb $t2, grid($t1)
-            addiu $t3, $t0, 49 # '0'+i+1
-            beq $t2, $t3, take_corner1
+            addi $s4, $t1, 1 # $s4 = i + 1
+            addu $s4, $s4, '0' # $s4 = '0' + i + 1
+            beq $t2, $s4, take_corner1
             # jesli to sie nie spelni to przejdz do nastepnego znaku
-            addi $t0, $t0, 4 # zwiększ i o 1
+            addi $t0, $t0, 4 # zwiększ i o 4 (bo 4 bajty na inta)
+            addi $t3, $t3, 1 # zwiększ i o 1
             j take_corner_loop
             take_corner1:
-                lb $t2, computer_sign
-                sb $t2, grid($t1)
+                lb $t4, computer_sign($zero)
+                sb $t4, grid($t1)
                 j after_computer_move
-
-
-
 
     take_corner_end:
-    
-    #zajecie czegos innego
+
+    ##############################################
+    #zajecie czegos innego - to dziala bardzo dobrze !!!
         addi $t0, $zero, 0 # iterator dla corners_indexes
+        move $s4, $zero
         take_something_loop:
-            beq $t0, 36, after_computer_move
+            beq $t0, 9, end_taking_something 
             lb $t1, grid($t0)
-            addiu $t2, $t0, 49
-            beq $t1, $t2, take_something1
-            addi $t0, $t0, 4
+            addi $s4, $t0, 1 # $s4 = i + 1
+            addu $s4, $s4, '0' # $s4 = '0' + i + 1
+            beq $t1, $s4, take_something1
+            addi $t0, $t0, 1
             j take_something_loop
             take_something1:
-                lb $t1, computer_sign
-                sb $t1, grid($t0)
+                lb $t3, computer_sign($zero)
+                sb $t3, grid($t0)
                 j after_computer_move
 
-    j after_computer_move
+    end_taking_something:
+
+        j after_computer_move
 
 upgrade_results:
     jal check_draw
-    beq $v0, 1, after_upgrade_results
+    beq $v0, 1, show_msg
 
     jal check_win
     lb $t0, choiced_sign($zero)
@@ -214,23 +247,37 @@ upgrade_results:
     j upgrade_computer_score
 
     upgrade_human_score:
+        li $v0, 4
+        la $a0, win_msg
+        syscall
+
         lw $t0, human_score
         addi $t0, $t0, 1
         sw $t0, human_score
         j after_upgrade_results
 
     upgrade_computer_score:
+        li $v0, 4
+        la $a0, lose_msg
+        syscall
+
         lw $t0, computer_score
         addi $t0, $t0, 1
         sw $t0, computer_score
         j after_upgrade_results 
 
+    show_msg:
+        li $v0, 4
+        la $a0, draw_msg
+        syscall
+        j after_upgrade_results
+
 check_draw:
     addi $t0, $zero, 0 # $t0 - iterator pętli
     check_draw_loop:
-        beq $t0, 36, its_draw # jesli i == 36 to jest remis
-        lb $t1, grid($t0) # wczytaj znak z tablicy
-        addi $t0, $t0, 4 # zwiększ i o 4
+        lbu $t1, grid($t0) # wczytaj znak z tablicy
+        beqz $t1, its_draw # jesli sie skonczylo to jest remis
+        addiu $t0, $t0, 1 # zwiększ i o 1
         beq $t1, 'o', check_draw_loop
         beq $t1, 'x', check_draw_loop
         j its_not_draw
@@ -243,6 +290,8 @@ check_draw:
         jr $ra
 
 check_win:
+    # $v0 = zwraca 1 jesli wygrana, 0 jesli nie
+    # $v1 = zwraca wygrany znak
     # implementacja sprawdzania wygranej
     li $t0, 0                 # $t0 - iterator pętli
     la $t1, sign_set          # $t1 - wskaźnik na zbiór znaków
@@ -257,8 +306,8 @@ check_win:
     # Sprawdź wszystkie możliwe kombinacje zwycięstwa
         la $t5, grid
         lb $t6, ($t5)             # grid[0]
-        lb $t7, 4($t5)            # grid[1]
-        lb $t8, 8($t5)            # grid[2]
+        lb $t7, 1($t5)            # grid[1]
+        lb $t8, 2($t5)            # grid[2]
         beq $t6, $s2, check_win_condition1
         j check_win_condition2
 
@@ -270,9 +319,9 @@ check_win:
         beq $t8, $s2, win_found
 
     check_win_condition2:
-        lb $t6, 12($t5)            # grid[3]
-        lb $t7, 16($t5)            # grid[4]
-        lb $t8, 20($t5)            # grid[5]
+        lb $t6, 3($t5)            # grid[3]
+        lb $t7, 4($t5)            # grid[4]
+        lb $t8, 5($t5)            # grid[5]
         beq $t6, $s2, check_win_condition3
         j check_win_condition4
 
@@ -284,9 +333,9 @@ check_win:
         beq $t8, $s2, win_found
 
     check_win_condition4:
-        lb $t6, 24($t5)            # grid[6]
-        lb $t7, 28($t5)            # grid[7]
-        lb $t8, 32($t5)            # grid[8]
+        lb $t6, 6($t5)            # grid[6]
+        lb $t7, 7($t5)            # grid[7]
+        lb $t8, 8($t5)            # grid[8]
         beq $t6, $s2, check_win_condition5
         j check_win_condition6
 
@@ -299,8 +348,8 @@ check_win:
 
     check_win_condition6:
         lb $t6, 0($t5)             # grid[0]
-        lb $t7, 12($t5)            # grid[3]
-        lb $t8, 24($t5)            # grid[6]
+        lb $t7, 3($t5)            # grid[3]
+        lb $t8, 6($t5)            # grid[6]
         beq $t6, $s2, check_win_condition7
         j check_win_condition8
 
@@ -312,9 +361,9 @@ check_win:
         beq $t8, $s2, win_found
 
     check_win_condition8:
-        lb $t6, 4($t5)             # grid[1]
-        lb $t7, 16($t5)            # grid[4]
-        lb $t8, 28($t5)            # grid[7]
+        lb $t6, 1($t5)             # grid[1]
+        lb $t7, 4($t5)            # grid[4]
+        lb $t8, 7($t5)            # grid[7]
         beq $t6, $s2, check_win_condition9
         j check_win_condition10
 
@@ -326,9 +375,9 @@ check_win:
         beq $t8, $s2, win_found
 
     check_win_condition10:
-        lb $t6, 8($t5)            # grid[2]
-        lb $t7, 20($t5)            # grid[5]
-        lb $t8, 32($t5)            # grid[8]
+        lb $t6, 2($t5)            # grid[2]
+        lb $t7, 5($t5)            # grid[5]
+        lb $t8, 8($t5)            # grid[8]
         beq $t6, $s2, check_win_condition11
         j check_win_condition12
 
@@ -341,8 +390,8 @@ check_win:
 
     check_win_condition12:
         lb $t6, 0($t5)            # grid[0]
-        lb $t7, 16($t5)            # grid[4]
-        lb $t8, 32($t5)            # grid[8]
+        lb $t7, 4($t5)            # grid[4]
+        lb $t8, 8($t5)            # grid[8]
         beq $t6, $s2, check_win_condition13
         j check_win_condition14
 
@@ -354,9 +403,9 @@ check_win:
         beq $t8, $s2, win_found
 
     check_win_condition14:
-        lb $t6, 8($t5)            # grid[2]
-        lb $t7, 16($t5)            # grid[4]
-        lb $t8, 24($t5)            # grid[6]
+        lb $t6, 2($t5)            # grid[2]
+        lb $t7, 4($t5)            # grid[4]
+        lb $t8, 6($t5)            # grid[6]
         beq $t6, $s2, check_win_condition15
         j increment_iterator
 
@@ -410,13 +459,13 @@ print_stats:
 
 clear_grid:
     # czyszczenie tablicy
-    addiu $t0, $zero, 0
     addiu $t1, $zero, '1'
+    addi  $t0, $zero, 0
     clear_loop:
-        beq $t0, 36, clear_loop_end
+        beq $t0, 9, clear_loop_end
         sb $t1, grid($t0)
         addiu $t1, $t1, 1
-        addiu $t0, $t0, 4
+        addi $t0, $t0, 1
 
         j clear_loop
     clear_loop_end:
@@ -433,7 +482,6 @@ get_player_move:
     bgt $v0, 9, get_player_move # jesli pozycja jest wieksza od 9 to powrot do wprowadzania pozycji
 
     subi $t0, $v0, 1 # szukamy indeksu w tablicy
-    mul $t0, $t0, 4 # mnozymy indeks przez 4
 
     lb $t3, grid($t0) # wczytujemy znak z tablicy
 
@@ -465,31 +513,36 @@ print_grid:
     addi $t0, $zero, 0
     addi $t2, $zero, 1
 	print_grid_loop:
-        beq $t0, 36, print_grid_loop_end
+        beq $t2, 10, print_grid_loop_end
         lbu $t1, grid($t0)
-
         # drukowanie elementu
         li $v0, 11
         move $a0, $t1
         syscall
 
+        beq $t2, 3, skip_divider
+        beq $t2, 6, skip_divider
+        beq $t2, 9, skip_divider
         # postawienie spacji
         li $v0, 11
-        la $a0, ' '
+        la $a0, '|'
         syscall
+
+        skip_divider:
 
         beq $t2, 3, new_lane
         beq $t2, 6, new_lane
         j skip_new_lane
 
         new_lane:
-            li $v0, 11
-            la $a0, '\n'
+            li $v0, 4
+            la $a0, small_divider
             syscall
+
 
         skip_new_lane:
             addi $t2, $t2, 1
-            addiu $t0, $t0, 4
+            addiu $t0, $t0, 1
 
         j print_grid_loop
 
@@ -534,4 +587,4 @@ get_sign:
 
 	set_sign:
 		sb $v0, choiced_sign
-		jr $ra
+	    jr $ra
