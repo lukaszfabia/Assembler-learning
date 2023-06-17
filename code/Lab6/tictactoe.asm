@@ -14,18 +14,19 @@ computer_score: .word 0
 position: .word 0
 
 # napisy
-computer: .asciiz "Komputer"
+computer: .asciiz "Ai"
 prompt_player_name: .asciiz "Podaj swoje imie: "
 prompt_amount_rounds: .asciiz "Podaj ilosc rund: "
-prompt_position: .asciiz "\n\nPodaj pozycje: "
+prompt_position: .asciiz "\nPodaj pozycje: "
 win_msg: .asciiz "\nWygrales!\n\n"
 lose_msg: .asciiz "\nPrzegrales!\n\n"
 draw_msg: .asciiz "\nRemis!\n\n"
-end_msg: .asciiz "\n\nKoniec gry!"
+end_msg: .asciiz "\nKoniec gry!"
 round_msg: .asciiz "\n\nRunda: "
 choice_msg: .asciiz "Wybierz swoj znak 'x' albo 'o': "
 divider: .asciiz "\n\n-----------------------------------\n\n"
-small_divider: .asciiz "\n------\n"
+other_divider: .asciiz "---------------------\n"
+small_divider: .asciiz "\n-----\n"
 computer_msg: .asciiz "Komputer wybiera pozycje\n\n"
 
 
@@ -33,21 +34,14 @@ computer_msg: .asciiz "Komputer wybiera pozycje\n\n"
 
 .text
 main:
-	li $v0, 4
-    la $a0, prompt_player_name
-    syscall
-
-    li $v0, 8
-    la $a0, player_name
-	li $a1, 30
-    syscall
+	jal get_player_name # pobranie imienia gracza
 
 	# pobranie ilosci rund
 	jal get_rounds
-
+    
 	# pobranie znaku od gracza
 	jal get_sign
-
+    
 	# ustawienie znaku komputera
 	jal get_computer_sign
 
@@ -75,7 +69,6 @@ main:
 		addi $s0, $s0, 1 # zwiekszenie numeru rundy o 1
 	    bne $s0, $s1, game_loop # jesli numer rundy jest rowny ilosci rund to zakoncz gre
 
-
 exit:
     li $v0, 4
     la $a0, end_msg
@@ -83,8 +76,23 @@ exit:
     
 	li $v0, 10
 	syscall
-# jedna runda gry    
+
+get_player_name:
+    li $v0, 4
+    la $a0, prompt_player_name
+    syscall
+
+    li $v0, 8
+    la $a0, player_name
+	li $a1, 30
+    syscall
+    
+    li $v0, 4
+    la $a0, other_divider
+    syscall
+    jr $ra
 round:
+    # jedna runda gry 
     jal print_grid # wypisanie planszy
     # done 
     jal check_win
@@ -430,17 +438,13 @@ check_win:
         li $v0, 0                 # Ustawienie wartości zwrotnej na false
         jr $ra                    # Powrót z funkcji
 print_stats:
-    # wypisanie statystyk w stylu "imie: wynik - wynik :komputer"
+    # wypisanie statystyk w stylu "komputer  wynik - wynik  imie_gracza"
     li $v0, 4
     la $a0, computer
     syscall 
 
     li $v0, 11
-    la $a0, '-'
-    syscall
-
-    li $v0, 4
-    la $a0, player_name
+    la $a0, ' '
     syscall
 
     li $v0, 1
@@ -448,11 +452,19 @@ print_stats:
     syscall
 
     li $v0, 11
-    la $a0, ':'
+    la $a0, '-'
     syscall
 
     li $v0, 1
     lw $a0, human_score
+    syscall
+
+    li $v0, 11
+    la $a0, ' '
+    syscall
+
+    li $v0, 4
+    la $a0, player_name
     syscall
     
     jr $ra
@@ -571,6 +583,10 @@ get_rounds:
     bgt $v0, 5, get_rounds # jesli ilosc rund jest wieksza od 5 to powrot do wprowadzania ilosci rund
     sw $v0, amount_rounds
 
+    li $v0, 4
+    la $a0, other_divider
+    syscall
+
 	jr $ra
 
 get_sign:
@@ -587,4 +603,9 @@ get_sign:
 
 	set_sign:
 		sb $v0, choiced_sign
+
+        li $v0, 4
+        la $a0, other_divider
+        syscall
+
 	    jr $ra
